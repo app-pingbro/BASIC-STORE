@@ -19,6 +19,14 @@
   <meta property="og:image" content="assets/logo/basic-logo-512.png">
   <meta property="og:type" content="website">
 
+  <!-- ══ PRECONNECT KE BACKEND ══ -->
+  <!-- Panggilan pertama ke Apps Script harus melalui DNS + TLS + redirect.
+       Memulai proses koneksinya lebih awal memangkas ratusan milidetik dari
+       waktu tampil katalog. -->
+  <link rel="preconnect" href="https://script.google.com" crossorigin>
+  <link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
+  <link rel="dns-prefetch" href="https://drive.google.com">
+
   <!-- ══ FONT ══ -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -225,7 +233,10 @@
   </div>
 
   <!-- ══ SCRIPT ══ -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <!-- Chart.js TIDAK dimuat di sini: ukurannya ~200KB dan hanya dipakai oleh
+       dashboard admin. Memuatnya di setiap kunjungan toko berarti setiap
+       pembeli ikut menunggu berkas yang tidak pernah mereka pakai.
+       Pemuatannya dilakukan on-demand di js/pages-admin.js. -->
   <script src="js/config.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/api.js"></script>

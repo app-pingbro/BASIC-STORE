@@ -74,6 +74,31 @@ function sesiBermasalah(res) {
 // DASHBOARD
 // ════════════════════════════════════════════════════════
 
+/**
+ * Muat Chart.js hanya ketika dashboard admin benar-benar dibuka.
+ * Pembeli tidak pernah menyentuh halaman ini, jadi mereka tidak perlu
+ * menunggu unduhan pustaka grafiknya.
+ */
+let _chartJsPromise = null;
+
+function loadChartJs() {
+  if (typeof Chart !== 'undefined') return Promise.resolve();
+  if (_chartJsPromise) return _chartJsPromise;
+
+  _chartJsPromise = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js';
+    s.async = true;
+    s.onload = resolve;
+    s.onerror = () => {
+      _chartJsPromise = null; // biar bisa dicoba lagi nanti
+      reject(new Error('Pustaka grafik gagal dimuat.'));
+    };
+    document.head.appendChild(s);
+  });
+  return _chartJsPromise;
+}
+
 async function loadAdminDashboard() {
   const c = document.getElementById('adminDashboardContainer');
   c.innerHTML = skeletonBlock(140);
@@ -108,8 +133,17 @@ async function loadAdminDashboard() {
       </div>
     </div>`;
 
-  renderSalesChart(d.salesByDay);
-  renderTopProductChart(d.produkTerlaris);
+  // Angka KPI & insight sudah tampil di atas. Grafik menyusul begitu pustaka
+  // Chart.js selesai diunduh — admin tidak menunggu layar kosong.
+  try {
+    await loadChartJs();
+    renderSalesChart(d.salesByDay);
+    renderTopProductChart(d.produkTerlaris);
+  } catch (e) {
+    document.querySelectorAll('#chartSales, #chartTop').forEach(el => {
+      el.outerHTML = `<p class="text-muted small text-center">Grafik tidak bisa dimuat (butuh koneksi internet).</p>`;
+    });
+  }
 }
 
 function renderSalesChart(salesByDay) {

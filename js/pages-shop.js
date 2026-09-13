@@ -9,19 +9,43 @@
 // KATALOG
 // ════════════════════════════════════════════════════════
 
+/**
+ * Muat katalog dengan pola "tampilkan dulu, segarkan kemudian".
+ *
+ * Urutan prioritas:
+ * 1. Sudah ada di memori (pindah halaman) → render, tanpa jaringan sama sekali.
+ * 2. Ada salinan di browser → render SEKETIKA, lalu segarkan diam-diam.
+ * 3. Belum punya apa-apa → tampilkan kerangka, tunggu server.
+ */
 async function loadKatalog(paksa) {
   const grid = document.getElementById('katalogGrid');
-  if (AppState.katalog.length && !paksa) {
-    renderFilterBar();
-    renderKatalogGrid();
+
+  // 1. Sudah diambil dari server pada sesi ini → cukup gambar ulang, tanpa jaringan
+  if (AppState.katalog.length && AppState.katalogSegar && !paksa) {
+    tampilkanKatalog();
     return;
   }
-  grid.innerHTML = skeletonCards(8);
+
+  // 2. Sudah ada isinya dari cache browser (lihat hydrateDariCache di app.js)
+  //    → tampilkan SEKETIKA, lalu segarkan diam-diam di latar belakang
+  const adaIsiAwal = AppState.katalog.length > 0 && !paksa;
+  if (adaIsiAwal) {
+    tampilkanKatalog();
+    tandaiMenyegarkan(true);
+  } else {
+    grid.innerHTML = skeletonCards(8);
+  }
 
   const res = await Api.bootstrap();
-  hideLoadingOverlay();
+  tandaiMenyegarkan(false);
 
   if (!res.success) {
+    // Kalau layar sudah terisi dari cache, jangan dikosongkan hanya karena
+    // penyegaran gagal — pembeli tetap bisa melihat dan berbelanja.
+    if (adaIsiAwal) {
+      showToast('Gagal menyegarkan katalog — menampilkan data terakhir.', 'warning');
+      return;
+    }
     grid.innerHTML = `<div class="empty-state">
       <p>${escapeHtml(res.message)}</p>
       <button class="btn btn-secondary mt-2" onclick="loadKatalog(true)">Coba Lagi</button>
@@ -29,14 +53,34 @@ async function loadKatalog(paksa) {
     return;
   }
 
-  AppState.katalog = res.data.katalog || [];
-  AppState.config = res.data.config || AppState.config;
+  const katalogBaru = res.data.katalog || [];
+  const configBaru = res.data.config || AppState.config;
+  const berubah = JSON.stringify(katalogBaru) !== JSON.stringify(AppState.katalog);
 
+  AppState.katalog = katalogBaru;
+  AppState.config = configBaru;
+  AppState.katalogSegar = true;
+  KatalogCache.write(katalogBaru, configBaru);
+
+  // Hanya gambar ulang kalau memang ada perubahan — mencegah layar "berkedip"
+  // saat isi katalognya ternyata sama persis dengan yang sudah tampil.
+  if (!adaIsiAwal || berubah) tampilkanKatalog();
+}
+
+function tampilkanKatalog() {
   renderFilterBar();
   renderKatalogGrid();
-
   document.getElementById('statTotalProduk').textContent = AppState.katalog.length;
   document.getElementById('statPO').textContent = AppState.katalog.filter(p => p.po).length;
+}
+
+/** Penanda halus bahwa data sedang disegarkan di latar belakang. */
+function tandaiMenyegarkan(aktif) {
+  const label = document.getElementById('jumlahProdukLabel');
+  if (!label) return;
+  if (aktif) label.dataset.menyegarkan = '1';
+  else delete label.dataset.menyegarkan;
+  label.style.opacity = aktif ? '0.45' : '';
 }
 
 function renderFilterBar() {
@@ -101,17 +145,53 @@ function scrollToGrid() {
 
 async function renderDetailProduk(produkId) {
   const container = document.getElementById('pdpContainer');
-  container.innerHTML = skeletonBlock(420);
+  AppState.selectedVarian = null;
+  AppState.qty = 1;
+
+  // Foto, nama, dan harga sudah kita punya dari katalog — tampilkan lebih dulu
+  // supaya halaman langsung terisi, sementara varian & deskripsi menyusul.
+  const ringkas = AppState.katalog.find(p => p.produkId === produkId);
+  const adaTampilanAwal = !!ringkas;
+  if (ringkas) {
+    drawPDP({
+      produkId: ringkas.produkId,
+      nama: ringkas.nama,
+      deskripsi: '',
+      kategori: ringkas.kategori,
+      harga: ringkas.harga,
+      fotos: ringkas.fotoUtama ? [ringkas.fotoUtama] : [],
+      tipeJual: ringkas.tipeJual,
+      status: ringkas.status,
+      varian: [],
+      po: ringkas.po,
+      _memuat: true
+    });
+  } else {
+    container.innerHTML = skeletonBlock(420);
+  }
 
   const res = await Api.produk(produkId);
   if (!res.success) {
-    container.innerHTML = `<div class="empty-state">${escapeHtml(res.message)}</div>`;
+    // Kalau foto/nama/harga sudah tampil dari katalog, jangan dihapus hanya
+    // karena pengambilan varian gagal — cukup beri tahu dan sediakan tombol ulang.
+    if (adaTampilanAwal) {
+      const tombol = container.querySelector('.pdp-info .btn-primary');
+      if (tombol) {
+        tombol.textContent = 'Muat Ulang Pilihan Ukuran';
+        tombol.disabled = false;
+        tombol.setAttribute('onclick', `renderDetailProduk('${escapeJs(produkId)}')`);
+      }
+      showToast(res.message, 'warning');
+      return;
+    }
+    container.innerHTML = `<div class="empty-state">
+      <p>${escapeHtml(res.message)}</p>
+      <a class="btn btn-secondary mt-2" href="#/katalog">Kembali ke Katalog</a>
+    </div>`;
     return;
   }
 
   AppState.currentProduk = res.data;
-  AppState.selectedVarian = null;
-  AppState.qty = 1;
   drawPDP(res.data);
 }
 
@@ -150,17 +230,23 @@ function drawPDP(p) {
     ? `<div class="field-group">
          <label class="label">Pilih Ukuran / Varian</label>
          <div class="swatch-row" id="varianSwatchRow">
-           ${p.varian.length
-             ? p.varian.map(v => `<button class="swatch" data-vid="${escapeHtml(v.varianId)}"
-                 onclick="selectVarian('${escapeJs(v.varianId)}')" ${v.stok <= 0 ? 'disabled' : ''}>
-                 ${escapeHtml(v.ukuran)} / ${escapeHtml(v.warna)}${v.stok <= 0 ? ' (Habis)' : ''}
-               </button>`).join('')
-             : '<span class="text-muted">Belum ada varian tersedia.</span>'}
+           ${p._memuat
+             ? `<div class="skeleton" style="height:42px;width:120px;"></div>
+                <div class="skeleton" style="height:42px;width:120px;"></div>`
+             : p.varian.length
+               ? p.varian.map(v => `<button class="swatch" data-vid="${escapeHtml(v.varianId)}"
+                   onclick="selectVarian('${escapeJs(v.varianId)}')" ${v.stok <= 0 ? 'disabled' : ''}>
+                   ${escapeHtml(v.ukuran)} / ${escapeHtml(v.warna)}${v.stok <= 0 ? ' (Habis)' : ''}
+                 </button>`).join('')
+               : '<span class="text-muted">Belum ada varian tersedia.</span>'}
          </div>
        </div>`
     : `<div class="form-hint">Pre-Order dihitung per unit dari kuota batch — tidak perlu memilih stok varian.</div>`;
 
-  const bisaBeli = isPO ? !!(p.po && p.po.sisaKuota > 0) : p.varian.some(v => v.stok > 0);
+  const bisaBeli = p._memuat ? false
+    : isPO ? !!(p.po && p.po.sisaKuota > 0)
+    : p.varian.some(v => v.stok > 0);
+  const labelTombol = p._memuat ? 'Memuat pilihan…' : bisaBeli ? 'Tambah ke Keranjang' : 'Stok Habis';
 
   document.getElementById('pdpContainer').innerHTML = `
     <div class="pdp-grid">
@@ -184,7 +270,7 @@ function drawPDP(p) {
           </div>
         </div>
         <button class="btn btn-primary btn-block" onclick="handleAddToCart()" ${bisaBeli ? '' : 'disabled'}>
-          ${bisaBeli ? 'Tambah ke Keranjang' : 'Stok Habis'}
+          ${labelTombol}
         </button>
       </div>
     </div>`;
@@ -441,8 +527,10 @@ async function submitCheckout() {
   AppState.lastOrder = res.data;
   cart.clear();
   Draft.clear();
-  // Stok berubah di server → segarkan katalog saat pembeli kembali berbelanja
+  // Stok baru saja berkurang di server → buang salinan lama supaya angka stok
+  // yang ditampilkan setelah ini benar-benar terbaru.
   AppState.katalog = [];
+  KatalogCache.clear();
 
   renderKonfirmasi(res.data);
   location.hash = '#/konfirmasi';

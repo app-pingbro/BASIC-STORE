@@ -295,7 +295,7 @@ Semua di spreadsheet **`DB_BASIC`**, sheet **`AppConfig`**:
 
 | Key | Fungsi |
 |---|---|
-| `adminPin` | PIN login admin — ganti kapan saja, langsung berlaku |
+| `adminPin` | PIN login admin — ganti kapan saja, berlaku untuk login berikutnya dalam maks. 5 menit |
 | `ongkirDefault` | Ongkos kirim flat saat checkout |
 | `banks` | Daftar rekening tujuan (format JSON) |
 | `adminEmail` | Penerima notifikasi pesanan baru & bukti bayar |
@@ -303,3 +303,35 @@ Semua di spreadsheet **`DB_BASIC`**, sheet **`AppConfig`**:
 
 Menambah admin baru: tambahkan baris di sheet **`Admin`** (Email, Nama, CommunityID). Admin baru
 memakai PIN yang sama.
+
+---
+
+# Catatan Kecepatan
+
+Apa yang membuat aplikasi ini terasa cepat, dan apa yang wajar terjadi:
+
+**Saat dibuka kedua kali dan seterusnya — katalog tampil seketika.**
+Salinan katalog terakhir disimpan di browser pengunjung. Begitu situs dibuka, salinan itu langsung
+digambar (tanpa menunggu jaringan sama sekali), lalu versi terbaru diambil diam-diam di latar
+belakang dan layar hanya diperbarui kalau memang ada yang berubah. Efek sampingnya: kalau Anda baru
+saja mengubah produk, pengunjung mungkin melihat versi lama selama sekejap sebelum layarnya
+menyesuaikan. Ini disengaja — jauh lebih baik daripada menatap layar kosong.
+
+**Kunjungan pertama tetap perlu menunggu Apps Script.** Panggilan pertama ke `/exec` harus melewati
+pengalihan URL dan, kalau skrip lama tidak dipakai, proses "bangun tidur" (cold start). Ini bawaan
+Apps Script dan tidak bisa dihilangkan sepenuhnya. Yang sudah dilakukan untuk menekannya:
+
+- `setupAppEnvironment()` memasang trigger **`warmupCache` tiap 10 menit** yang menyiapkan data
+  katalog lebih dulu, sehingga pengunjung jarang menjadi orang yang menanggung cache dingin.
+- Seluruh data halaman depan diambil dalam **satu permintaan** (`?action=bootstrap`), bukan
+  beberapa permintaan terpisah.
+- Hasil rakitan katalog disimpan utuh di cache server, jadi permintaan yang kena cache tidak perlu
+  membaca Google Sheets sama sekali.
+
+**Angka yang wajar:** kunjungan pertama sekitar 1–3 detik sampai katalog terisi; kunjungan
+berikutnya praktis langsung tampil. Kalau pembukaan pertama terasa jauh lebih lambat dari itu,
+periksa dulu apakah trigger `warmupCache` benar-benar terpasang (di editor Apps Script → ikon jam
+di sidebar kiri → daftar **Triggers**).
+
+**Jangan hapus trigger `warmupCache`** kalau ingin situs tetap terasa ringan. Beban kuotanya kecil
+(sekitar 7 menit waktu eksekusi per hari dari jatah 90 menit).

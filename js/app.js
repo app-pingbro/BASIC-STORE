@@ -103,8 +103,24 @@ function router() {
 
 window.addEventListener('hashchange', router);
 
+/**
+ * Isi AppState dari salinan katalog di browser SEBELUM router dijalankan.
+ *
+ * Ini penting untuk halaman yang dibuka langsung (tautan produk yang dibagikan,
+ * atau keranjang yang di-bookmark): tanpa ini, halaman-halaman tersebut mulai
+ * dengan data kosong dan harus menunggu server, padahal salinannya sudah ada.
+ */
+function hydrateDariCache() {
+  const cache = KatalogCache.read();
+  if (!cache) return;
+  AppState.katalog = cache.katalog;
+  AppState.config = cache.config || AppState.config;
+  AppState.katalogSegar = false; // tetap perlu disegarkan di latar belakang
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   cart.updateBadge();
+  hydrateDariCache();
 
   document.getElementById('adminLoginForm').addEventListener('submit', handleAdminLogin);
 
@@ -118,10 +134,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Peringatan bila GAS_URL belum diisi (kesalahan paling umum saat deploy)
   if (!apiSiap()) {
-    hideLoadingOverlay();
     showToast('URL backend belum diisi di js/config.js — data tidak akan muncul.', 'danger');
   }
 
   if (!location.hash) location.replace('#/katalog');
   router();
+
+  // Lepas layar loading SEKARANG, jangan menunggu jawaban server.
+  // Kerangka halaman (header, hero, menu) sudah siap dan bisa dibaca;
+  // bagian katalog mengisi dirinya sendiri lewat kerangka/cache.
+  hideLoadingOverlay();
 });

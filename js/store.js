@@ -11,6 +11,8 @@
 
 const AppState = {
   katalog: [],            // cache katalog di sisi klien → filter & navigasi instan
+  katalogSegar: false,    // true = sudah diambil dari server pada sesi ini
+                          // false = isinya dari cache browser, masih perlu disegarkan
   config: { ongkir: 15000, banks: [], waAdmin: '' },
   filterKategori: 'Semua',
   currentProduk: null,
@@ -92,6 +94,48 @@ class ShoppingCart {
 }
 
 const cart = new ShoppingCart();
+
+/**
+ * Cache katalog di browser — inti dari "buka langsung tampil".
+ *
+ * Memanggil Apps Script selalu butuh 0,5–3 detik (redirect /exec + cold start).
+ * Menunggu itu setiap kali situs dibuka membuat aplikasi terasa lambat, padahal
+ * katalog jarang berubah. Polanya: tampilkan salinan terakhir SEKETIKA, lalu
+ * ambil versi terbaru diam-diam di latar belakang dan perbarui layar hanya
+ * kalau memang ada yang berubah.
+ */
+const KatalogCache = {
+  KEY: 'basic_katalog_v2',
+  MAX_AGE: 24 * 60 * 60 * 1000, // salinan lebih tua dari sehari dianggap terlalu basi
+
+  read() {
+    try {
+      const raw = localStorage.getItem(this.KEY);
+      if (!raw) return null;
+      const obj = JSON.parse(raw);
+      if (!obj || !Array.isArray(obj.katalog)) return null;
+      if (Date.now() - (obj.ts || 0) > this.MAX_AGE) return null;
+      return obj;
+    } catch (e) {
+      return null;
+    }
+  },
+
+  write(katalog, config) {
+    try {
+      localStorage.setItem(this.KEY, JSON.stringify({
+        katalog: katalog, config: config, ts: Date.now()
+      }));
+    } catch (e) {
+      // Kuota localStorage penuh / mode privat — bukan masalah, hanya
+      // kehilangan keuntungan tampil instan pada kunjungan berikutnya.
+    }
+  },
+
+  clear() {
+    try { localStorage.removeItem(this.KEY); } catch (e) {}
+  }
+};
 
 /** Draft data pembeli agar tidak hilang saat berpindah langkah checkout. */
 const Draft = {
