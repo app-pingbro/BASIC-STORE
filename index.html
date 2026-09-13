@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>BASIC — Bali Screen Printing Community</title>
+  <meta name="description" content="Merchandise resmi komunitas sablon Bali. Heavy plastisol, 300gsm archive. Penjualan reguler & pre-order.">
+  <meta name="theme-color" content="#09090B">
+
+  <!-- ══ FAVICON (dibuat dari logo BASIC) ══ -->
+  <link rel="icon" href="assets/favicon/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon/favicon-16.png">
+  <link rel="apple-touch-icon" href="assets/favicon/apple-touch-icon.png">
+
+  <!-- ══ OPEN GRAPH (tampilan saat link dibagikan) ══ -->
+  <meta property="og:title" content="BASIC — Bali Screen Printing Community">
+  <meta property="og:description" content="Merchandise resmi komunitas sablon Bali. Heavy plastisol // 300gsm archive.">
+  <meta property="og:image" content="assets/logo/basic-logo-512.png">
+  <meta property="og:type" content="website">
+
+  <!-- ══ FONT ══ -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- ══ LOADING OVERLAY ══ -->
+  <div id="loadingOverlay" class="loading-overlay">
+    <img src="assets/logo/basic-logo-128.png" alt="BASIC" class="loading-logo">
+    <div class="spinner"></div>
+    <p class="label">Memuat BASIC…</p>
+  </div>
+
+  <!-- ══ TOAST HOST ══ -->
+  <div id="toastHost"></div>
+
+  <!-- ════════════════════════════════════════════════
+       SHELL PEMBELI (Storefront)
+  ════════════════════════════════════════════════ -->
+  <div id="buyerShell">
+
+    <div class="index-bar">
+      <span><span class="dot"></span><strong>BASIC</strong> // BALI SCREEN PRINTING COMMUNITY</span>
+      <span>ED. 001/∞ &nbsp;//&nbsp; HEAVY PLASTISOL // 300GSM ARCHIVE</span>
+    </div>
+
+    <header class="site-header">
+      <a href="#/katalog" class="brand">
+        <img src="assets/logo/basic-logo-128.png" alt="Logo BASIC" class="brand-logo">
+        <span class="brand-text">
+          <span class="brand-name">BASIC</span>
+          <span class="brand-sub">Screen Print Archive</span>
+        </span>
+      </a>
+      <nav class="nav-actions">
+        <a href="#/status" class="icon-btn" title="Cek Pesanan" aria-label="Cek status pesanan">
+          <svg viewBox="0 0 24 24"><path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        </a>
+        <a href="#/keranjang" class="icon-btn" title="Keranjang" aria-label="Keranjang belanja">
+          <svg viewBox="0 0 24 24"><path d="M3 3h2l.4 2M7 13h10l3-8H5.4M7 13L5.4 5M7 13l-2 5h13M9 21a1 1 0 100-2 1 1 0 000 2zM18 21a1 1 0 100-2 1 1 0 000 2z"/></svg>
+          <span class="cart-badge" id="cartBadge" hidden>0</span>
+        </a>
+        <a href="#/admin" class="icon-btn" title="Admin" aria-label="Masuk sebagai admin">
+          <svg viewBox="0 0 24 24"><path d="M12 12a4 4 0 100-8 4 4 0 000 8zM4 21a8 8 0 0116 0"/></svg>
+        </a>
+      </nav>
+    </header>
+
+    <main class="container">
+
+      <!-- ── KATALOG ── -->
+      <section id="page-katalog" class="page">
+        <div class="hero reg-mark">
+          <div class="hero-eyebrow"><span class="dot"></span><span class="label">Drop Aktif // Komunitas Sablon Bali</span></div>
+          <h1>HEAVY<br>PLASTISOL<span>//</span><br>300GSM ARCHIVE</h1>
+          <p class="desc">Merchandise resmi komunitas sablon Bali. Cetakan plastisol tebal, katun combed premium, edisi terbatas — reguler &amp; pre-order.</p>
+          <div class="hero-actions">
+            <button class="btn btn-primary" onclick="scrollToGrid()">Belanja Sekarang</button>
+            <a href="#/status" class="btn btn-secondary">Cek Status Pesanan</a>
+          </div>
+          <div class="hero-stats">
+            <div class="hero-stat"><div class="v" id="statTotalProduk">–</div><div class="l">Produk Live</div></div>
+            <div class="hero-stat"><div class="v" id="statPO">–</div><div class="l">Pre-Order Buka</div></div>
+            <div class="hero-stat"><div class="v">300</div><div class="l">GSM Substrate</div></div>
+          </div>
+        </div>
+
+        <div class="filter-bar" id="filterBar"></div>
+
+        <div id="gridAnchor" class="section-head">
+          <h2>Katalog</h2>
+          <span class="label" id="jumlahProdukLabel">0 ITEM</span>
+        </div>
+
+        <div id="katalogGrid" class="grid-produk"></div>
+      </section>
+
+      <!-- ── DETAIL PRODUK ── -->
+      <section id="page-detail" class="page">
+        <a href="#/katalog" class="btn btn-ghost mt-2">&larr; Kembali ke Katalog</a>
+        <div id="pdpContainer"></div>
+      </section>
+
+      <!-- ── KERANJANG ── -->
+      <section id="page-keranjang" class="page">
+        <div class="section-head"><h2>Keranjang</h2><span class="label" id="cartCountLabel">0 ITEM</span></div>
+        <div id="cartContainer"></div>
+      </section>
+
+      <!-- ── CHECKOUT ── -->
+      <section id="page-checkout" class="page">
+        <div class="section-head"><h2>Checkout</h2><span class="label">// 03 LANGKAH</span></div>
+        <div class="stepper">
+          <div class="step active" data-step="1"><span class="n">01</span>Data Pembeli</div>
+          <div class="step" data-step="2"><span class="n">02</span>Pengiriman</div>
+          <div class="step" data-step="3"><span class="n">03</span>Pembayaran</div>
+        </div>
+        <div id="checkoutContainer"></div>
+      </section>
+
+      <!-- ── KONFIRMASI ── -->
+      <section id="page-konfirmasi" class="page">
+        <div id="konfirmasiContainer"></div>
+      </section>
+
+      <!-- ── STATUS PESANAN ── -->
+      <section id="page-status" class="page">
+        <div class="section-head"><h2>Status Pesanan</h2></div>
+        <div id="statusContainer"></div>
+      </section>
+
+    </main>
+
+    <footer class="site-footer">
+      <div class="container footer-inner">
+        <img src="assets/logo/basic-logo-128.png" alt="Logo BASIC" class="footer-logo">
+        <div>
+          <span class="label">BASIC — Bali Screen Printing Community</span>
+          <p class="text-muted mono footer-note">Heavy plastisol // 300gsm archive. Dibuat manual, dicetak dengan tekanan penuh.</p>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <!-- ════════════════════════════════════════════════
+       SHELL ADMIN
+  ════════════════════════════════════════════════ -->
+  <div id="adminShell" hidden>
+
+    <!-- LOGIN ADMIN -->
+    <section id="page-admin" class="page login-wrap">
+      <div class="card login-card">
+        <div class="card-strip"><span>// ADMIN ACCESS</span><span>BASIC</span></div>
+        <div class="card-body stack gap-md">
+          <img src="assets/logo/basic-logo-256.png" alt="Logo BASIC" class="login-logo">
+          <h3 class="text-center">Login Admin BASIC</h3>
+          <p class="text-muted text-center small">Masuk dengan email yang terdaftar di sheet Admin beserta PIN admin komunitas.</p>
+          <form id="adminLoginForm" autocomplete="off">
+            <div class="form-field"><label for="adminEmailInput">Email Admin</label>
+              <input type="email" id="adminEmailInput" placeholder="admin@email.com" required></div>
+            <div class="form-field"><label for="adminPinInput">PIN Admin</label>
+              <input type="password" id="adminPinInput" placeholder="••••••" inputmode="numeric" required></div>
+            <button class="btn btn-primary btn-block" id="btnAdminLogin" type="submit">Masuk</button>
+          </form>
+          <div id="adminLoginMsg" class="form-error" hidden></div>
+          <a href="#/katalog" class="btn btn-ghost">&larr; Kembali ke Toko</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- PANEL ADMIN -->
+    <div id="adminApp" class="admin-shell" hidden>
+      <div class="admin-topbar">
+        <button class="icon-btn" onclick="toggleAdminSidebar()" aria-label="Menu">
+          <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+        <span class="label-lg" id="adminPageTitle">Dashboard</span>
+        <a href="#/katalog" class="icon-btn" title="Lihat Toko" aria-label="Lihat toko">
+          <svg viewBox="0 0 24 24"><path d="M3 12l2-2 7-7 7 7 2 2M5 10v10h14V10"/></svg>
+        </a>
+      </div>
+
+      <nav class="admin-sidebar" id="adminSidebar">
+        <div class="admin-sidebar-header">
+          <img src="assets/logo/basic-logo-128.png" alt="Logo BASIC" class="sidebar-logo">
+          <div>
+            <div class="brand-name sidebar-title">BASIC Admin</div>
+            <div class="brand-sub" id="adminNamaLabel">—</div>
+          </div>
+        </div>
+        <ul class="admin-nav">
+          <li><a href="#/admin/dashboard" data-page="admin/dashboard"><svg viewBox="0 0 24 24"><path d="M3 12h4v8H3v-8zM10 4h4v16h-4V4zM17 9h4v11h-4V9z"/></svg>Dashboard</a></li>
+          <li><a href="#/admin/produk" data-page="admin/produk"><svg viewBox="0 0 24 24"><path d="M20 7L12 3 4 7m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>Kelola Produk</a></li>
+          <li><a href="#/admin/po" data-page="admin/po"><svg viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Kelola Pre-Order</a></li>
+          <li><a href="#/admin/pesanan" data-page="admin/pesanan"><svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 7h6m-6 4h6"/></svg>Kelola Pesanan</a></li>
+        </ul>
+        <div class="admin-sidebar-footer">
+          <button class="btn btn-secondary btn-block btn-sm" onclick="handleAdminLogout()">Keluar</button>
+        </div>
+      </nav>
+
+      <main class="admin-main">
+        <section id="page-admin-dashboard" class="page"><div id="adminDashboardContainer"></div></section>
+        <section id="page-admin-produk" class="page"><div id="adminProdukContainer"></div></section>
+        <section id="page-admin-po" class="page"><div id="adminPOContainer"></div></section>
+        <section id="page-admin-pesanan" class="page"><div id="adminPesananContainer"></div></section>
+      </main>
+    </div>
+  </div>
+
+  <!-- ══ MODAL ══ -->
+  <div class="modal-overlay" id="genericModal" hidden>
+    <div class="modal-box">
+      <div class="modal-head">
+        <h3 id="genericModalTitle">Modal</h3>
+        <button class="modal-close" onclick="closeModal()" aria-label="Tutup">&times;</button>
+      </div>
+      <div class="modal-body" id="genericModalBody"></div>
+      <div class="modal-foot" id="genericModalFoot"></div>
+    </div>
+  </div>
+
+  <!-- ══ SCRIPT ══ -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/pages-shop.js"></script>
+  <script src="js/pages-admin.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
