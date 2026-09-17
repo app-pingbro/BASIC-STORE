@@ -15,7 +15,7 @@
  * Kalau nilai di bawah masih "GANTI_DENGAN_URL_EXEC_ANDA",
  * situs akan tampil tapi datanya kosong dan muncul peringatan.
  */
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbwtJMzLnJxN3TDxZB891O5YfoVYn0pwzcr0VTnlAmLOU9d2iuPP--U9cJhCLNuyhQbG/exec';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbxbogtlq9WJTt1etrfG7jJINAtXVITcTQm0DGQF4PWWrWW6RD_F3rrToyh1R3nASx-i/exec';
 
 /** Batas ukuran file yang boleh diunggah pembeli/admin (sebelum dikompres). */
 const MAX_UPLOAD_MB = 10;
