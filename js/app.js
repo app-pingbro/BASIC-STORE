@@ -17,18 +17,23 @@ const RUTE = {
   'checkout':        { page: 'page-checkout',        shell: 'buyer' },
   'konfirmasi':      { page: 'page-konfirmasi',      shell: 'buyer' },
   'status':          { page: 'page-status',          shell: 'buyer' },
+  // Diagnostik sengaja berada di shell pembeli (tanpa login): halaman ini justru
+  // dibutuhkan saat login admin tidak bisa dilakukan.
+  'diagnostik':      { page: 'page-diagnostik',      shell: 'buyer' },
   'admin':           { page: 'page-admin',           shell: 'admin-login' },
   'admin/dashboard': { page: 'page-admin-dashboard', shell: 'admin' },
   'admin/produk':    { page: 'page-admin-produk',    shell: 'admin' },
   'admin/po':        { page: 'page-admin-po',        shell: 'admin' },
-  'admin/pesanan':   { page: 'page-admin-pesanan',   shell: 'admin' }
+  'admin/pesanan':   { page: 'page-admin-pesanan',   shell: 'admin' },
+  'admin/pengaturan':{ page: 'page-admin-pengaturan',shell: 'admin' }
 };
 
 const JUDUL_ADMIN = {
   'admin/dashboard': 'Dashboard',
   'admin/produk': 'Kelola Produk',
   'admin/po': 'Kelola Pre-Order',
-  'admin/pesanan': 'Kelola Pesanan'
+  'admin/pesanan': 'Kelola Pesanan',
+  'admin/pengaturan': 'Pengaturan Admin'
 };
 
 /** Pecah hash menjadi { rute, param }. Contoh: "#/produk/abc" → { rute:'produk', param:'abc' } */
@@ -89,11 +94,13 @@ function router() {
     case 'checkout':   initCheckout(); break;
     case 'konfirmasi': renderKonfirmasi(AppState.lastOrder); break;
     case 'status':     renderStatusForm(param ? decodeURIComponent(param) : ''); break;
+    case 'diagnostik': renderDiagnostik(); break;
     case 'admin':      document.getElementById('adminEmailInput').focus({ preventScroll: true }); break;
-    case 'admin/dashboard': loadAdminDashboard(); break;
-    case 'admin/produk':    loadAdminProduk(); break;
-    case 'admin/po':        loadAdminPO(); break;
-    case 'admin/pesanan':   loadAdminPesanan(); break;
+    case 'admin/dashboard':  loadAdminDashboard(); break;
+    case 'admin/produk':     loadAdminProduk(); break;
+    case 'admin/po':         loadAdminPO(); break;
+    case 'admin/pesanan':    loadAdminPesanan(); break;
+    case 'admin/pengaturan': loadAdminPengaturan(); break;
   }
 }
 

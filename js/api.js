@@ -13,7 +13,7 @@
  * 3. Jangan pakai mode 'no-cors' — responsnya jadi opaque & tak terbaca.
  */
 
-/** Apakah GAS_URL sudah diisi? */
+/** Apakah GAS_URL sudah diisi dengan bentuk yang benar? */
 function apiSiap() {
   return typeof GAS_URL === 'string' &&
          GAS_URL.indexOf('script.google.com') !== -1 &&
@@ -22,34 +22,114 @@ function apiSiap() {
 
 function peringatanUrlBelumDiisi() {
   return {
-    success: false,
-    data: null,
+    success: false, data: null, gagalKoneksi: true,
     message: 'URL backend belum diisi. Buka file js/config.js lalu isi GAS_URL dengan URL /exec dari Apps Script Anda.'
   };
 }
 
 /**
+ * Status kesehatan backend.
+ *
+ * Ada karena satu masalah nyata: katalog disimpan di browser dan tetap tampil
+ * walau backend mati, sehingga kegagalan bisa tersembunyi sampai seseorang
+ * mencoba login admin — satu-satunya halaman yang tidak punya cadangan.
+ * Sekarang kegagalan koneksi apa pun memunculkan spanduk yang menetap.
+ */
+const BackendHealth = {
+  sehat: null,          // null = belum diketahui
+  pesanTerakhir: '',
+
+  tandaiSehat() {
+    if (this.sehat === false) this.render(true);
+    this.sehat = true;
+  },
+
+  tandaiGagal(pesan) {
+    this.pesanTerakhir = pesan;
+    if (this.sehat !== false) { this.sehat = false; this.render(false); }
+  },
+
+  render(sehat) {
+    let bar = document.getElementById('backendBanner');
+    if (sehat) { if (bar) bar.remove(); return; }
+    if (!bar) {
+      bar = document.createElement('div');
+      bar.id = 'backendBanner';
+      bar.className = 'backend-banner';
+      document.body.appendChild(bar);
+    }
+    bar.innerHTML =
+      `<span><strong>Backend tidak bisa dihubungi.</strong> ${escapeHtml(this.pesanTerakhir)}</span>
+       <a class="btn btn-sm btn-secondary" href="#/diagnostik">Jalankan Diagnostik</a>`;
+  }
+};
+
+/**
+ * Terjemahkan kegagalan HTTP menjadi penyebab yang bisa ditindaklanjuti.
+ * Tanpa ini, pengguna hanya melihat angka seperti "404" tanpa tahu artinya.
+ */
+function jelaskanStatus(status, metode) {
+  if (status === 404) {
+    return 'Endpoint Apps Script menjawab 404 (tidak ditemukan). Dua sebab tersering: ' +
+           '(a) deployment masih memakai versi kode lama — perbaiki lewat Deploy → Manage deployments → Edit → Version: New version; ' +
+           'atau (b) URL /exec di js/config.js sudah tidak berlaku, biasanya karena pernah menekan ' +
+           '"New deployment" yang membuat URL baru. Buka halaman Diagnostik untuk memastikan.';
+  }
+  if (status === 401 || status === 403) {
+    return 'Akses ke Apps Script ditolak (' + status + '). Pada Deploy → Manage deployments, ' +
+           'pastikan "Who has access" diatur ke "Anyone", bukan "Only myself".';
+  }
+  if (status >= 500) {
+    return 'Apps Script mengalami error internal (' + status + '). Cek Executions di editor Apps Script ' +
+           'untuk melihat baris mana yang gagal.';
+  }
+  return 'Server menjawab dengan status ' + status + ' pada permintaan ' + metode + '.';
+}
+
+/** Ubah error jaringan/parsing menjadi kalimat yang bisa dimengerti. */
+function pesanErrorRamah(err) {
+  const m = String((err && err.message) || err);
+  if (m.includes('Failed to fetch') || m.includes('NetworkError') || m.includes('Load failed')) {
+    return 'Tidak bisa terhubung ke server. Cek koneksi internet, dan pastikan Web App Apps Script ' +
+           'sudah di-deploy dengan akses "Anyone".';
+  }
+  if (m.includes('Unexpected token') || m.includes('JSON') || m.includes('<')) {
+    return 'Server mengirim HTML, bukan data JSON. Ini tanda khas deployment masih memakai kode versi lama ' +
+           '(versi HtmlService). Buat versi baru: Deploy → Manage deployments → Edit → Version: New version.';
+  }
+  return m;
+}
+
+/** Bungkus hasil fetch yang gagal menjadi jawaban seragam. */
+function jawabanGagal(pesan) {
+  BackendHealth.tandaiGagal(pesan);
+  return { success: false, data: null, gagalKoneksi: true, message: pesan };
+}
+
+/**
  * Permintaan GET — untuk data publik (katalog, detail produk, status pesanan).
- * @param {string} action  nama action di doGet()
- * @param {object} params  parameter tambahan (opsional)
  */
 async function apiGet(action, params) {
   if (!apiSiap()) return peringatanUrlBelumDiisi();
   try {
     const qs = new URLSearchParams(Object.assign({ action: action }, params || {}));
     const res = await fetch(`${GAS_URL}?${qs.toString()}`, { method: 'GET' });
-    if (!res.ok) throw new Error('Server menjawab dengan status ' + res.status);
-    return await res.json();
+    if (!res.ok) return jawabanGagal(jelaskanStatus(res.status, 'GET'));
+
+    const teks = await res.text();
+    let json;
+    try { json = JSON.parse(teks); }
+    catch (e) { return jawabanGagal(pesanErrorRamah(new Error('Unexpected token'))); }
+
+    BackendHealth.tandaiSehat();
+    return json;
   } catch (err) {
-    return { success: false, data: null, message: pesanErrorRamah(err) };
+    return jawabanGagal(pesanErrorRamah(err));
   }
 }
 
 /**
  * Permintaan POST — untuk menulis data & seluruh aksi admin.
- * @param {string} action  nama action di doPost()
- * @param {object} data    muatan data
- * @param {string} token   token sesi admin (opsional, untuk aksi admin)
  */
 async function apiPost(action, data, token) {
   if (!apiSiap()) return peringatanUrlBelumDiisi();
@@ -60,25 +140,56 @@ async function apiPost(action, data, token) {
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: action, data: data || {}, token: token || '' })
     });
-    if (!res.ok) throw new Error('Server menjawab dengan status ' + res.status);
-    return await res.json();
+    if (!res.ok) return jawabanGagal(jelaskanStatus(res.status, 'POST'));
+
+    const teks = await res.text();
+    let json;
+    try { json = JSON.parse(teks); }
+    catch (e) { return jawabanGagal(pesanErrorRamah(new Error('Unexpected token'))); }
+
+    BackendHealth.tandaiSehat();
+    return json;
   } catch (err) {
-    return { success: false, data: null, message: pesanErrorRamah(err) };
+    return jawabanGagal(pesanErrorRamah(err));
   }
 }
 
-/** Ubah error teknis jadi kalimat yang bisa dimengerti pengguna. */
-function pesanErrorRamah(err) {
-  const m = String(err && err.message || err);
-  if (m.includes('Failed to fetch') || m.includes('NetworkError') || m.includes('Load failed')) {
-    return 'Tidak bisa terhubung ke server. Cek koneksi internet Anda, ' +
-           'dan pastikan Web App Apps Script sudah di-deploy dengan akses "Anyone".';
+/**
+ * Uji mentah untuk halaman Diagnostik.
+ * Mengembalikan detail apa adanya (status, potongan isi) tanpa diterjemahkan,
+ * supaya penyebab sebenarnya terlihat alih-alih tertutup pesan ramah.
+ */
+async function ujiEndpoint(metode) {
+  const mulai = Date.now();
+  const hasil = { metode: metode, ok: false, status: null, ms: 0, isi: '', catatan: '' };
+  try {
+    const res = metode === 'GET'
+      ? await fetch(`${GAS_URL}?action=ping`, { method: 'GET' })
+      : await fetch(GAS_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action: 'ping', data: {}, token: '' })
+        });
+
+    hasil.status = res.status;
+    hasil.ms = Date.now() - mulai;
+    const teks = await res.text();
+    hasil.isi = teks.slice(0, 400);
+
+    if (!res.ok) { hasil.catatan = jelaskanStatus(res.status, metode); return hasil; }
+    try {
+      const json = JSON.parse(teks);
+      hasil.ok = !!json.success;
+      hasil.data = json.data || null;
+      if (!hasil.ok) hasil.catatan = json.message || 'Backend menjawab tetapi menandai gagal.';
+    } catch (e) {
+      hasil.catatan = pesanErrorRamah(new Error('Unexpected token'));
+    }
+  } catch (err) {
+    hasil.ms = Date.now() - mulai;
+    hasil.catatan = pesanErrorRamah(err);
   }
-  if (m.includes('Unexpected token') || m.includes('JSON')) {
-    return 'Jawaban server tidak dikenali. Biasanya ini berarti URL /exec salah, ' +
-           'atau deployment belum diperbarui setelah kode diubah.';
-  }
-  return m;
+  return hasil;
 }
 
 // ── Pembungkus per-aksi (agar pemanggilan di halaman tetap ringkas) ──
@@ -96,6 +207,12 @@ const Api = {
   // Admin — autentikasi
   adminLogin:  (email, pin) => apiPost('adminLogin', { email: email, pin: pin }),
   adminLogout: (token)      => apiPost('adminLogout', {}, token),
+
+  // Admin — email berwenang
+  emailList:   (t)          => apiPost('adminEmailList', {}, t),
+  saveEmail:   (t, d)       => apiPost('adminSaveEmail', d, t),
+  toggleEmail: (t, em, s)   => apiPost('adminToggleEmail', { email: em, statusBaru: s }, t),
+  deleteEmail: (t, em)      => apiPost('adminDeleteEmail', { email: em }, t),
 
   // Admin — data
   dashboard:     (t)            => apiPost('adminDashboard', {}, t),

@@ -30,9 +30,17 @@ percakapan — tidak perlu mengerjakan semuanya sekaligus.
    **Go to (nama proyek) (unsafe)** → **Allow**. Ini normal untuk skrip milik sendiri.
 3. Buka **Execution log**. Catat yang muncul:
    - URL Spreadsheet `DB_BASIC` dan folder Drive `BASIC_App_Files`
-   - **🔑 PIN ADMIN AWAL** — ini dipakai untuk login ke panel admin nanti
-4. Jangan jalankan fungsi ini berulang kali. (Aman kalaupun terlanjur — fungsinya memeriksa dulu
-   sebelum membuat, jadi tidak akan menduplikasi data.)
+   - **🔑 PIN ADMIN AKTIF** — dipakai untuk login ke panel admin
+4. Fungsi ini aman dijalankan berulang kali — ia memeriksa dulu sebelum membuat, jadi tidak
+   menduplikasi data.
+
+> **PIN admin selama development: `112233`** (tetap, tidak berubah-ubah).
+> PIN dikunci lewat konstanta `ADMIN_PIN_DEV` di bagian atas `Kode.gs`. Selama `KUNCI_PIN_DEV`
+> masih `true`, menjalankan `setupAppEnvironment()` berapa kali pun akan selalu mengembalikan PIN
+> ke nilai itu — jadi tidak ada lagi PIN acak yang berganti tiap setup.
+>
+> Lupa atau ragu PIN-nya berapa? Jalankan fungsi **`lihatPinAdmin`** dari dropdown fungsi di
+> editor, lalu lihat Execution log. Fungsi itu membaca nilai yang benar-benar tersimpan.
 
 ## A3. Deploy sebagai Web App
 
@@ -271,6 +279,47 @@ salah — tapi perlu Anda ketahui apa yang sedang dilakukan, bukan sekadar menya
 
 ---
 
+# Halaman Diagnostik — cek dulu sebelum menebak
+
+Situs punya halaman bawaan untuk memeriksa sambungan ke backend:
+
+```
+https://USERNAME.github.io/NAMA-REPO/#/diagnostik
+```
+
+Bisa juga dibuka lewat tombol **Tes Koneksi Backend** di halaman login admin — sengaja diletakkan
+di sana karena justru saat login gagal halaman ini paling dibutuhkan.
+
+Halaman itu menguji GET dan POST secara terpisah, lalu menyimpulkan penyebabnya. Pola hasilnya
+punya arti yang berbeda-beda:
+
+| GET | POST | Artinya | Perbaikan |
+|:---:|:----:|---|---|
+| ✓ | ✓ | Backend sehat, versi cocok | Kalau login masih ditolak, periksa email & PIN — bukan koneksi |
+| ✓ | ✓ | Versi backend lebih lama dari yang diharapkan | Deploy → Manage deployments → ✏️ → Version: **New version** |
+| ✓ | ✗ | Deployment belum punya `doPost` — **ini penyebab 404 saat login** | Sama seperti di atas: buat **New version** |
+| ✗ | ✗ | URL `/exec` sudah tidak berlaku | Salin URL aktif dari Manage deployments ke `js/config.js`, push ulang |
+| ✗ | ✗ | Jawaban berupa HTML | Deployment masih kode era HtmlService — buat **New version** |
+
+> ⚠️ Perbedaan yang sering menjebak: **"New deployment" membuat URL `/exec` BARU**, sementara
+> **"Manage deployments → Edit → New version"** memperbarui kode di URL yang sama. Untuk pembaruan
+> kode, hampir selalu yang Anda butuhkan adalah yang kedua.
+
+Kalau backend sedang tidak bisa dihubungi, sekarang muncul **spanduk merah menetap** di bawah layar.
+Sebelumnya kegagalan bisa tersembunyi karena katalog tetap tampil dari salinan di browser.
+
+# Pengaturan Admin — Email Berwenang
+
+Menu **Pengaturan Admin** di panel admin mengelola siapa saja yang boleh login. Datanya ada di sheet
+`Admin` dan diperiksa di server saat login — bukan di browser.
+
+Setiap email punya status **Aktif** atau **Nonaktif**. Email nonaktif tetap tercatat tetapi ditolak
+saat login. Dua hal sengaja dikunci demi keamanan: Anda tidak bisa menonaktifkan atau menghapus akun
+Anda sendiri, dan admin aktif terakhir tidak bisa dihilangkan — supaya tidak ada skenario di mana
+semua orang terkunci di luar panel.
+
+Semua admin memakai PIN yang sama (`AppConfig` → `adminPin`).
+
 # Masalah umum lainnya
 
 | Yang terlihat | Sebab | Solusi |
@@ -284,7 +333,8 @@ salah — tapi perlu Anda ketahui apa yang sedang dilakukan, bukan sekadar menya
 | `Updates were rejected...` | Repo GitHub sudah berisi berkas (README) | `git pull --rebase origin main` lalu `git push` |
 | `LF will be replaced by CRLF` | Beda format baris Windows vs Linux | **Abaikan** — ini peringatan biasa, bukan error |
 | Foto produk tidak muncul | Foto diunggah lewat panel admin? | Unggah lewat menu **Kelola Produk → Edit → Tambah Foto**, jangan tempel URL Drive manual |
-| Login admin ditolak terus | PIN salah, atau email tidak ada di sheet `Admin` | Cek sheet `AppConfig` baris `adminPin` & sheet `Admin` |
+| Login admin ditolak terus | PIN salah, atau email tidak ada di sheet `Admin` | Jalankan `lihatPinAdmin` di editor untuk melihat PIN yang benar-benar aktif; cek juga email Anda ada di sheet `Admin` |
+| PIN terasa berubah-ubah | Versi lama mencetak PIN acak baru di log setiap kali setup dijalankan, padahal nilai itu tidak tersimpan | Sudah diperbaiki — PIN kini dikunci `112233` dan log membaca nilai yang benar-benar tersimpan |
 | "Terlalu banyak percobaan gagal" | Proteksi brute-force aktif | Tunggu 15 menit, lalu coba lagi |
 
 ---
@@ -295,7 +345,7 @@ Semua di spreadsheet **`DB_BASIC`**, sheet **`AppConfig`**:
 
 | Key | Fungsi |
 |---|---|
-| `adminPin` | PIN login admin — ganti kapan saja, berlaku untuk login berikutnya dalam maks. 5 menit |
+| `adminPin` | PIN login admin. Selama development nilainya dikunci `112233`. Untuk menggantinya, jalankan `gantiPinAdmin("pin-baru")` di editor — berlaku seketika |
 | `ongkirDefault` | Ongkos kirim flat saat checkout |
 | `banks` | Daftar rekening tujuan (format JSON) |
 | `adminEmail` | Penerima notifikasi pesanan baru & bukti bayar |
@@ -303,6 +353,17 @@ Semua di spreadsheet **`DB_BASIC`**, sheet **`AppConfig`**:
 
 Menambah admin baru: tambahkan baris di sheet **`Admin`** (Email, Nama, CommunityID). Admin baru
 memakai PIN yang sama.
+
+## Sebelum toko dibuka untuk umum
+
+PIN `112233` sengaja dipasang tetap agar nyaman dipakai selama pengembangan — tetapi nilainya
+tertulis di dalam kode, jadi jangan dibawa ke produksi. Dua langkah saat siap rilis:
+
+1. Di `Kode.gs` bagian atas, ubah `const KUNCI_PIN_DEV = true;` menjadi `false`.
+2. Jalankan `gantiPinAdmin("pin-rahasia-anda")` sekali dari editor.
+
+Setelah itu PIN tidak akan tersentuh lagi oleh `setupAppEnvironment()`, dan tidak ada PIN asli yang
+tersimpan di dalam berkas kode.
 
 ---
 

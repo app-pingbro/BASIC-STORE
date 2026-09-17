@@ -664,3 +664,117 @@ async function updateStatusPesanan(nomorPesanan) {
   showToast(res.message, res.success ? 'success' : 'danger');
   loadAdminPesanan(FilterPesananAktif);
 }
+
+// ════════════════════════════════════════════════════════
+// PENGATURAN ADMIN — EMAIL YANG BERWENANG LOGIN
+// ════════════════════════════════════════════════════════
+//
+// Daftar ini hidup di sheet Admin dan divalidasi di server saat login.
+// Tampilan di sini hanya jendela ke data itu — menonaktifkan email di layar
+// tidak berarti apa-apa sampai server menyimpannya.
+
+async function loadAdminPengaturan() {
+  const c = document.getElementById('adminPengaturanContainer');
+  c.innerHTML = skeletonBlock(200);
+
+  const res = await Api.emailList(AppState.adminToken);
+  if (sesiBermasalah(res)) return;
+  if (!res.success) { c.innerHTML = `<div class="empty-state">${escapeHtml(res.message)}</div>`; return; }
+
+  const rows = res.data.map(a => `
+    <tr>
+      <td class="mono">${escapeHtml(a.email)}${a.iniSaya ? ' <span class="badge">ANDA</span>' : ''}</td>
+      <td>${escapeHtml(a.nama || '-')}</td>
+      <td><span class="badge ${a.aktif ? 'badge-success' : 'badge-habis'}">${escapeHtml(a.status)}</span></td>
+      <td><div class="row-actions">
+        <button class="btn btn-sm btn-secondary" onclick="openEmailModal('${escapeJs(a.email)}','${escapeJs(a.nama || '')}','${escapeJs(a.status)}')">Edit</button>
+        <button class="btn btn-sm btn-secondary" ${a.iniSaya ? 'disabled title="Tidak bisa mengubah akun sendiri"' : ''}
+          onclick="ubahStatusEmail('${escapeJs(a.email)}','${a.aktif ? 'Nonaktif' : 'Aktif'}')">
+          ${a.aktif ? 'Nonaktifkan' : 'Aktifkan'}
+        </button>
+        <button class="btn btn-sm btn-danger" ${a.iniSaya ? 'disabled title="Tidak bisa menghapus akun sendiri"' : ''}
+          onclick="konfirmasiHapusEmail('${escapeJs(a.email)}')">Hapus</button>
+      </div></td>
+    </tr>`).join('');
+
+  c.innerHTML = `
+    <div class="flex-between mb-2">
+      <h3 style="font-size:1.1rem;">Pengaturan Admin — Email Berwenang</h3>
+      <button class="btn btn-primary btn-sm" onclick="openEmailModal('','','Aktif')">+ Tambah Email</button>
+    </div>
+    <p class="text-muted small mb-2">
+      Hanya email pada daftar ini yang boleh masuk ke panel admin, dan hanya yang berstatus Aktif.
+      Pemeriksaannya dilakukan di server saat login.
+    </p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Email</th><th>Nama</th><th>Status</th><th>Aksi</th></tr></thead>
+      <tbody>${rows || '<tr><td colspan="4" class="text-center text-muted">Belum ada email admin.</td></tr>'}</tbody>
+    </table></div>
+    <div class="insight-panel mt-3">
+      <span class="label-lg" style="color:var(--c-primary);">// Catatan</span>
+      <ul>
+        <li>Anda tidak bisa menonaktifkan atau menghapus akun Anda sendiri — pengaman agar tidak terkunci di luar.</li>
+        <li>Admin aktif terakhir juga tidak bisa dihapus, dengan alasan yang sama.</li>
+        <li>Semua admin memakai PIN yang sama (lihat sheet <code>AppConfig</code> → <code>adminPin</code>).</li>
+      </ul>
+    </div>`;
+}
+
+function openEmailModal(emailLama, nama, status) {
+  const judul = emailLama ? 'Edit Email Admin' : 'Tambah Email Admin';
+  openModal(judul, `
+    <div class="form-field"><label for="emEmail">Email <span class="req">*</span></label>
+      <input type="email" id="emEmail" value="${escapeHtml(emailLama)}" placeholder="nama@email.com"></div>
+    <div class="form-field"><label for="emNama">Nama</label>
+      <input type="text" id="emNama" value="${escapeHtml(nama)}" placeholder="Nama admin"></div>
+    <div class="form-field"><label for="emStatus">Status</label>
+      <select id="emStatus">
+        <option ${status === 'Aktif' ? 'selected' : ''}>Aktif</option>
+        <option ${status !== 'Aktif' ? 'selected' : ''}>Nonaktif</option>
+      </select></div>
+  `, `
+    <button class="btn btn-secondary" onclick="closeModal()">Batal</button>
+    <button class="btn btn-primary" id="btnSaveEmail" onclick="saveEmailForm('${escapeJs(emailLama)}')">Simpan</button>
+  `);
+}
+
+async function saveEmailForm(emailLama) {
+  const email = document.getElementById('emEmail').value.trim();
+  if (!email || email.indexOf('@') === -1) { showToast('Masukkan email yang valid.', 'warning'); return; }
+
+  const pulihkan = busyButton(document.getElementById('btnSaveEmail'), 'Menyimpan...');
+  const res = await Api.saveEmail(AppState.adminToken, {
+    emailLama: emailLama,
+    email: email,
+    nama: document.getElementById('emNama').value.trim(),
+    status: document.getElementById('emStatus').value
+  });
+  pulihkan();
+
+  if (sesiBermasalah(res)) return;
+  showToast(res.message, res.success ? 'success' : 'danger');
+  if (res.success) { closeModal(); loadAdminPengaturan(); }
+}
+
+async function ubahStatusEmail(email, statusBaru) {
+  const res = await Api.toggleEmail(AppState.adminToken, email, statusBaru);
+  if (sesiBermasalah(res)) return;
+  showToast(res.message, res.success ? 'success' : 'danger');
+  if (res.success) loadAdminPengaturan();
+}
+
+function konfirmasiHapusEmail(email) {
+  openModal('Hapus Email Admin',
+    `<p>Hapus <strong>${escapeHtml(email)}</strong> dari daftar admin?</p>
+     <p class="text-muted small mt-1">Email ini tidak akan bisa masuk ke panel admin lagi.</p>`,
+    `<button class="btn btn-secondary" onclick="closeModal()">Batal</button>
+     <button class="btn btn-danger" onclick="hapusEmail('${escapeJs(email)}')">Hapus</button>`);
+}
+
+async function hapusEmail(email) {
+  const res = await Api.deleteEmail(AppState.adminToken, email);
+  closeModal();
+  if (sesiBermasalah(res)) return;
+  showToast(res.message, res.success ? 'success' : 'danger');
+  if (res.success) loadAdminPengaturan();
+}
