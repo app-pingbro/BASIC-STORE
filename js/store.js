@@ -11,6 +11,7 @@
 
 const AppState = {
   katalog: [],            // cache katalog di sisi klien → filter & navigasi instan
+  hero: [],               // slide hero dari backend (kosong = pakai hero teks bawaan)
   katalogSegar: false,    // true = sudah diambil dari server pada sesi ini
                           // false = isinya dari cache browser, masih perlu disegarkan
   config: { ongkir: 15000, banks: [], waAdmin: '' },
@@ -121,10 +122,10 @@ const KatalogCache = {
     }
   },
 
-  write(katalog, config) {
+  write(katalog, config, hero) {
     try {
       localStorage.setItem(this.KEY, JSON.stringify({
-        katalog: katalog, config: config, ts: Date.now()
+        katalog: katalog, config: config, hero: hero || [], ts: Date.now()
       }));
     } catch (e) {
       // Kuota localStorage penuh / mode privat — bukan masalah, hanya

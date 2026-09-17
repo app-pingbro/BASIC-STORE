@@ -15,7 +15,7 @@
  * masih melayani kode lama meski editornya sudah berisi kode baru.
  */
 
-const VERSI_BACKEND_DIHARAPKAN = '2.1.0';
+const VERSI_BACKEND_DIHARAPKAN = '2.2.0';
 
 function renderDiagnostik() {
   const c = document.getElementById('diagnostikContainer');

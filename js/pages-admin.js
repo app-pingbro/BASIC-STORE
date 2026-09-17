@@ -283,8 +283,12 @@ function openProdukModal(produkId) {
       <textarea id="fDeskripsi">${escapeHtml(p ? p.Deskripsi : '')}</textarea></div>
     <div class="form-field"><label for="fKategori">Kategori</label>
       <input type="text" id="fKategori" value="${escapeHtml(p ? p.Kategori : '')}" placeholder="Kaos, Hoodie, Totebag..."></div>
-    <div class="form-field"><label for="fHarga">Harga (Rp) <span class="req">*</span></label>
-      <input type="number" id="fHarga" value="${p ? p.Harga : ''}" min="0"></div>
+    <div class="form-field"><label for="fHarga">Harga <span class="req">*</span></label>
+      <div class="input-rupiah">
+        <span class="input-prefix">Rp</span>
+        <input type="text" id="fHarga" inputmode="numeric" autocomplete="off"
+               value="${p ? keRibuan(p.Harga) : ''}" placeholder="65.000">
+      </div></div>
     <div class="form-field"><label for="fTipeJual">Tipe Jual</label>
       <select id="fTipeJual">
         <option value="Reguler" ${p && p.TipeJual === 'Reguler' ? 'selected' : ''}>Reguler</option>
@@ -301,9 +305,11 @@ function openProdukModal(produkId) {
       <span class="form-hint">Gambar otomatis dikompres agar unggahan cepat. Foto lama tetap dipertahankan.</span></div>
     <div class="foto-strip" id="fotoPreviewRow">${fotoPreview}</div>
   `, `
-    <button class="btn btn-secondary" onclick="closeModal()">Batal</button>
+    <button class="btn btn-secondary" onclick="tryCloseModal()">Batal</button>
     <button class="btn btn-primary" id="btnSaveProduk" onclick="saveProdukForm('${escapeJs(produkId || '')}')">Simpan</button>
-  `);
+  `, { jaga: true, cekTambahan: () => ProdukFotoBaru.length > 0 });
+
+  pasangInputAngka(document.getElementById('fHarga'), true);
 }
 
 async function pilihFotoProduk(input) {
@@ -328,7 +334,7 @@ async function pilihFotoProduk(input) {
 
 async function saveProdukForm(produkId) {
   const nama = document.getElementById('fNama').value.trim();
-  const harga = Number(document.getElementById('fHarga').value);
+  const harga = bacaAngka(document.getElementById('fHarga'));
   if (!nama || !harga) { showToast('Nama dan harga wajib diisi.', 'warning'); return; }
 
   const pulihkan = busyButton(document.getElementById('btnSaveProduk'), 'Menyimpan...');
@@ -406,11 +412,18 @@ function openTambahVarianForm(produkId) {
     <div class="form-field"><label for="vWarna">Warna</label>
       <input type="text" id="vWarna" placeholder="Hitam / Putih"></div>
     <div class="form-field"><label for="vStok">Stok Awal</label>
-      <input type="number" id="vStok" value="0" min="0"></div>
+      <input type="text" id="vStok" inputmode="numeric" autocomplete="off" value="0"></div>
   `, `
-    <button class="btn btn-secondary" onclick="openStokModal('${escapeJs(produkId)}')">Batal</button>
+    <button class="btn btn-secondary" onclick="batalTambahVarian('${escapeJs(produkId)}')">Batal</button>
     <button class="btn btn-primary" id="btnSaveVarian" onclick="saveTambahVarian('${escapeJs(produkId)}')">Simpan</button>
-  `);
+  `, { jaga: true });
+
+  pasangInputAngka(document.getElementById('vStok'), false);
+}
+
+/** Batal di form varian kembali ke daftar stok, bukan menutup semuanya. */
+function batalTambahVarian(produkId) {
+  tryCloseModal(() => openStokModal(produkId));
 }
 
 async function saveTambahVarian(produkId) {
@@ -422,7 +435,7 @@ async function saveTambahVarian(produkId) {
     ProdukID: produkId,
     Ukuran: ukuran,
     Warna: document.getElementById('vWarna').value.trim() || '-',
-    Stok: Number(document.getElementById('vStok').value) || 0
+    Stok: bacaAngka(document.getElementById('vStok'))
   });
   pulihkan();
 
@@ -513,10 +526,15 @@ function openPOModal(poId) {
     <div class="form-field"><label for="poProduk">Produk <span class="req">*</span></label>
       <select id="poProduk">${opsiProduk || '<option value="">(belum ada produk)</option>'}</select>
       <span class="form-hint">Produk yang dipilih otomatis diubah menjadi tipe Pre-Order.</span></div>
-    <div class="form-field"><label for="poHarga">Harga PO (Rp) <span class="req">*</span></label>
-      <input type="number" id="poHarga" value="${po ? po.HargaPO : ''}" min="0"></div>
+    <div class="form-field"><label for="poHarga">Harga PO <span class="req">*</span></label>
+      <div class="input-rupiah">
+        <span class="input-prefix">Rp</span>
+        <input type="text" id="poHarga" inputmode="numeric" autocomplete="off"
+               value="${po ? keRibuan(po.HargaPO) : ''}" placeholder="150.000">
+      </div></div>
     <div class="form-field"><label for="poKuota">Kuota PO <span class="req">*</span></label>
-      <input type="number" id="poKuota" value="${po ? po.KuotaPO : ''}" min="1"></div>
+      <input type="text" id="poKuota" inputmode="numeric" autocomplete="off"
+             value="${po ? po.KuotaPO : ''}" placeholder="50"></div>
     <div class="form-field"><label for="poMulai">Tanggal Mulai</label>
       <input type="date" id="poMulai" value="${tgl(po ? po.TanggalMulai : new Date())}"></div>
     <div class="form-field"><label for="poTutup">Tanggal Tutup</label>
@@ -527,15 +545,18 @@ function openPOModal(poId) {
           `<option ${po && po.StatusPO === s ? 'selected' : ''}>${s}</option>`).join('')}
       </select></div>
   `, `
-    <button class="btn btn-secondary" onclick="closeModal()">Batal</button>
+    <button class="btn btn-secondary" onclick="tryCloseModal()">Batal</button>
     <button class="btn btn-primary" id="btnSavePO" onclick="savePOForm('${escapeJs(poId || '')}')">Simpan</button>
-  `);
+  `, { jaga: true });
+
+  pasangInputAngka(document.getElementById('poHarga'), true);
+  pasangInputAngka(document.getElementById('poKuota'), false);
 }
 
 async function savePOForm(poId) {
   const produkId = document.getElementById('poProduk').value;
-  const harga = Number(document.getElementById('poHarga').value);
-  const kuota = Number(document.getElementById('poKuota').value);
+  const harga = bacaAngka(document.getElementById('poHarga'));
+  const kuota = bacaAngka(document.getElementById('poKuota'));
   if (!produkId || !harga || !kuota) { showToast('Lengkapi produk, harga, dan kuota PO.', 'warning'); return; }
 
   const pulihkan = busyButton(document.getElementById('btnSavePO'), 'Menyimpan...');
@@ -733,9 +754,9 @@ function openEmailModal(emailLama, nama, status) {
         <option ${status !== 'Aktif' ? 'selected' : ''}>Nonaktif</option>
       </select></div>
   `, `
-    <button class="btn btn-secondary" onclick="closeModal()">Batal</button>
+    <button class="btn btn-secondary" onclick="tryCloseModal()">Batal</button>
     <button class="btn btn-primary" id="btnSaveEmail" onclick="saveEmailForm('${escapeJs(emailLama)}')">Simpan</button>
-  `);
+  `, { jaga: true });
 }
 
 async function saveEmailForm(emailLama) {

@@ -208,6 +208,13 @@ const Api = {
   adminLogin:  (email, pin) => apiPost('adminLogin', { email: email, pin: pin }),
   adminLogout: (token)      => apiPost('adminLogout', {}, token),
 
+  // Admin — hero slider
+  heroList:   (t)           => apiPost('adminHeroList', {}, t),
+  saveHero:   (t, d)        => apiPost('adminSaveHero', d, t),
+  deleteHero: (t, id)       => apiPost('adminDeleteHero', { slideId: id }, t),
+  toggleHero: (t, id, s)    => apiPost('adminToggleHero', { slideId: id, statusBaru: s }, t),
+  moveHero:   (t, id, arah) => apiPost('adminMoveHero', { slideId: id, arah: arah }, t),
+
   // Admin — email berwenang
   emailList:   (t)          => apiPost('adminEmailList', {}, t),
   saveEmail:   (t, d)       => apiPost('adminSaveEmail', d, t),

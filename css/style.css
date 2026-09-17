@@ -212,6 +212,87 @@ img { max-width: 100%; display: block; }
 .hero-stat .v { font-family: var(--f-head); font-weight: 800; font-size: 1.4rem; color: var(--c-primary); }
 .hero-stat .l { font-size: 9.5px; color: var(--c-muted); text-transform: uppercase; letter-spacing: 0.06em; }
 
+/* ══════════════════════════════════════════
+   HERO SLIDER
+   ══════════════════════════════════════════ */
+.hero-slider {
+  position: relative; overflow: hidden;
+  border: 1px solid var(--c-border); background: var(--c-surface);
+  margin-top: var(--space-lg);
+}
+.hero-track {
+  display: flex;
+  transition: transform 550ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.hero-slide { position: relative; flex-shrink: 0; }
+.hero-slide img {
+  width: 100%; aspect-ratio: 16 / 9; object-fit: cover; display: block;
+}
+@media (min-width: 900px) { .hero-slide img { aspect-ratio: 21 / 9; } }
+
+.hero-slide-teks {
+  position: absolute; inset: auto 0 0 0;
+  padding: var(--space-lg) var(--gutter);
+  background: linear-gradient(to top, rgba(9,9,11,0.92) 15%, rgba(9,9,11,0.55) 55%, transparent);
+}
+.hero-slide-teks h1 {
+  font-size: clamp(1.4rem, 5vw, 2.8rem); font-weight: 800; line-height: 1.02;
+  text-shadow: 0 2px 20px rgba(0,0,0,0.5);
+}
+.hero-slide-teks p {
+  color: var(--c-ink-dim); font-size: 12.5px; margin-top: 0.5rem; max-width: 46ch;
+}
+@media (min-width: 768px) { .hero-slide-teks { padding: var(--space-xl) var(--space-xl); } }
+
+.hero-nav {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  width: 42px; height: 52px;
+  background: rgba(9,9,11,0.65); border: 1px solid var(--c-border-strong);
+  color: var(--c-ink); font-size: 24px; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 80ms linear, border-color 80ms linear;
+}
+.hero-nav:hover { background: var(--c-primary); border-color: var(--c-primary); color: #fff; }
+.hero-nav.prev { left: 0; }
+.hero-nav.next { right: 0; }
+
+.hero-dots {
+  position: absolute; left: 0; right: 0; bottom: 0.6rem;
+  display: flex; justify-content: center; gap: 0.4rem;
+}
+.hero-dot {
+  width: 22px; height: 4px; padding: 0;
+  background: rgba(212,212,216,0.4); border: none;
+  transition: background 120ms linear, width 120ms linear;
+}
+.hero-dot.active { background: var(--c-primary); width: 34px; }
+
+/* ── Admin: kelola hero ── */
+.hero-admin-list { display: flex; flex-direction: column; gap: 1px; background: var(--c-border); border: 1px solid var(--c-border); }
+.hero-admin-item {
+  display: grid; grid-template-columns: 96px 1fr; gap: 0.85rem;
+  background: var(--c-bg); padding: 0.75rem; align-items: center;
+}
+@media (min-width: 820px) { .hero-admin-item { grid-template-columns: 120px 1fr auto; } }
+.hero-admin-item.nonaktif { opacity: 0.5; }
+.hero-admin-thumb { position: relative; aspect-ratio: 16/9; overflow: hidden; background: var(--c-surface); }
+.hero-admin-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.hero-admin-urut {
+  position: absolute; top: 0; left: 0; background: var(--c-primary); color: #fff;
+  font-size: 10px; font-weight: 700; padding: 1px 6px;
+}
+.hero-admin-info .nm { font-family: var(--f-head); font-weight: 700; font-size: 13px; }
+.hero-admin-aksi { display: flex; gap: 0.35rem; flex-wrap: wrap; align-items: center; grid-column: 1 / -1; }
+@media (min-width: 820px) { .hero-admin-aksi { grid-column: auto; justify-content: flex-end; } }
+.hero-admin-urutan { display: flex; gap: 0.2rem; }
+.hero-admin-urutan .btn { min-width: 34px; padding: 0.4rem; }
+
+.hero-modal-preview {
+  border: 1px solid var(--c-border-strong); background: var(--c-bg);
+  min-height: 110px; display: flex; align-items: center; justify-content: center; overflow: hidden;
+}
+.hero-modal-preview img { width: 100%; object-fit: cover; max-height: 200px; }
+
 /* ── Filter bar ── */
 .filter-bar {
   display: flex; gap: 0.5rem; padding: var(--space-md) 0; overflow-x: auto;
@@ -304,6 +385,28 @@ input[type=password], input[type=search], input[type=date], input[type=file], te
   border-radius: 0;
 }
 textarea { min-height: 88px; resize: vertical; }
+
+/* ── Hilangkan spinner pada input angka ──
+   Field harga/stok kini memakai type="text" + inputmode="numeric", tetapi
+   aturan ini tetap dipasang sebagai jaring pengaman kalau suatu saat ada
+   input number yang terlewat. */
+input[type=number]::-webkit-outer-spin-button,
+input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+input[type=number] { -moz-appearance: textfield; appearance: textfield; }
+
+/* ── Input harga dengan awalan "Rp" ── */
+.input-rupiah { display: flex; align-items: stretch; border: 1px solid var(--c-border-strong); }
+.input-rupiah:focus-within { border-color: var(--c-primary); box-shadow: 0 0 0 1px var(--c-primary); }
+.input-rupiah .input-prefix {
+  display: flex; align-items: center; padding: 0 0.75rem;
+  background: var(--c-surface); color: var(--c-muted);
+  font-size: 12px; font-weight: 700; border-right: 1px solid var(--c-border-strong);
+}
+.input-rupiah input {
+  border: none; flex: 1; min-width: 0;
+  font-weight: 700; letter-spacing: 0.02em;
+}
+.input-rupiah input:focus { box-shadow: none; border: none; }
 input:focus, textarea:focus, select:focus {
   outline: none; border-color: var(--c-primary); box-shadow: 0 0 0 1px var(--c-primary);
 }
@@ -440,6 +543,11 @@ tbody tr:hover { background: rgba(228,0,43,0.04); }
 .modal-body { padding: var(--space-md); }
 .modal-foot { padding: var(--space-md); border-top: 1px solid var(--c-border); display: flex; gap: 0.5rem; justify-content: flex-end; flex-wrap: wrap; align-items: center; }
 .modal-close { background: none; border: none; color: var(--c-muted); font-size: 1.4rem; line-height: 1; padding: 0 0.3rem; }
+
+/* Konfirmasi keluar duduk DI ATAS modal form — form tetap utuh di belakangnya,
+   sehingga "Kembali Mengedit" benar-benar mengembalikan isian apa adanya. */
+.modal-overlay-atas { z-index: 950; background: rgba(0,0,0,0.6); }
+.modal-box-kecil { max-width: 400px; }
 
 /* ── Toast ── */
 #toastHost { position: fixed; bottom: 1rem; left: 50%; transform: translateX(-50%); z-index: 1000; display: flex; flex-direction: column; gap: 0.5rem; width: min(92vw, 380px); }

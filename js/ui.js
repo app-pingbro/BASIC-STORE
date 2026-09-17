@@ -27,6 +27,57 @@ function escapeJs(str) {
   return String(str == null ? '' : str).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 }
 
+// ── Input angka & format Rupiah ─────────────────────────
+//
+// Harga ditampilkan bertitik ribuan (65.000) tetapi yang dikirim ke server
+// tetap angka murni (65000). Input memakai type="text" + inputmode="numeric",
+// bukan type="number", supaya tombol panah atas/bawah (spinner) tidak muncul
+// sekaligus agar titik ribuan tidak dianggap karakter tidak sah oleh browser.
+
+/**
+ * Pasang perilaku angka pada sebuah input.
+ * @param {HTMLInputElement} el
+ * @param {boolean} pakaiRibuan  true = tampilkan titik ribuan
+ */
+function pasangInputAngka(el, pakaiRibuan) {
+  if (!el) return;
+
+  const terapkan = () => {
+    const posisi = el.selectionStart;
+    const sebelum = el.value;
+    // Hitung ada berapa digit di sebelah kiri kursor, supaya kursor bisa
+    // dikembalikan ke tempat yang sama setelah titik ribuan disisipkan.
+    const digitKiri = sebelum.slice(0, posisi).replace(/\D/g, '').length;
+
+    const digit = sebelum.replace(/\D/g, '');
+    const baru = digit ? (pakaiRibuan ? Number(digit).toLocaleString('id-ID') : digit) : '';
+    if (baru === sebelum) return;
+    el.value = baru;
+
+    let terhitung = 0, i = 0;
+    while (i < baru.length && terhitung < digitKiri) {
+      if (baru.charCodeAt(i) >= 48 && baru.charCodeAt(i) <= 57) terhitung++;
+      i++;
+    }
+    try { el.setSelectionRange(i, i); } catch (e) { /* input tipe tertentu tidak mendukung */ }
+  };
+
+  el.addEventListener('input', terapkan);
+  terapkan(); // rapikan nilai awal
+}
+
+/** Baca nilai numerik murni dari input berformat. */
+function bacaAngka(el) {
+  if (!el) return 0;
+  return Number(String(el.value).replace(/\D/g, '')) || 0;
+}
+
+/** Angka → teks bertitik ribuan, untuk mengisi nilai awal input. */
+function keRibuan(n) {
+  const v = Number(n);
+  return (!v && v !== 0) || isNaN(v) ? '' : v.toLocaleString('id-ID');
+}
+
 // ── Toast ───────────────────────────────────────────────
 
 function showToast(message, type) {
@@ -42,18 +93,97 @@ function showToast(message, type) {
   }, 3600);
 }
 
-// ── Modal ───────────────────────────────────────────────
+// ── Modal + penjaga data yang belum disimpan ────────────
+//
+// Sebelumnya modal langsung tertutup begitu latar belakangnya diklik atau
+// Escape ditekan — isian yang sedang diketik hilang tanpa peringatan.
+// Sekarang modal yang ditandai "dijaga" akan membandingkan isi form dengan
+// kondisi awalnya, lalu meminta konfirmasi kalau memang ada yang berubah.
 
-function openModal(title, bodyHtml, footHtml) {
+const ModalState = {
+  dijaga: false,
+  snapshot: '',
+  cekTambahan: null   // untuk hal yang tak terbaca dari nilai input, mis. foto baru
+};
+
+/**
+ * @param {object} opts  { jaga: true, cekTambahan: () => boolean }
+ */
+function openModal(title, bodyHtml, footHtml, opts) {
+  opts = opts || {};
   document.getElementById('genericModalTitle').textContent = title;
   document.getElementById('genericModalBody').innerHTML = bodyHtml;
   document.getElementById('genericModalFoot').innerHTML = footHtml || '';
   document.getElementById('genericModal').hidden = false;
+
+  ModalState.dijaga = !!opts.jaga;
+  ModalState.cekTambahan = opts.cekTambahan || null;
+  ModalState.snapshot = ModalState.dijaga ? potretForm() : '';
 }
 
-function setModalBody(html) { document.getElementById('genericModalBody').innerHTML = html; }
+function setModalBody(html) {
+  document.getElementById('genericModalBody').innerHTML = html;
+  if (ModalState.dijaga) ModalState.snapshot = potretForm();
+}
 function setModalFoot(html) { document.getElementById('genericModalFoot').innerHTML = html; }
-function closeModal() { document.getElementById('genericModal').hidden = true; }
+
+function closeModal() {
+  document.getElementById('genericModal').hidden = true;
+  document.getElementById('confirmExitModal').hidden = true;
+  ModalState.dijaga = false;
+  ModalState.cekTambahan = null;
+  ModalState.snapshot = '';
+}
+
+/** Rekam seluruh nilai isian di dalam modal sebagai satu teks pembanding. */
+function potretForm() {
+  const els = document.querySelectorAll('#genericModalBody input, #genericModalBody textarea, #genericModalBody select');
+  return Array.from(els)
+    .map(e => (e.type === 'file' ? '' : (e.type === 'checkbox' || e.type === 'radio' ? String(e.checked) : e.value)))
+    .join('');
+}
+
+function modalAdaPerubahan() {
+  if (!ModalState.dijaga) return false;
+  if (ModalState.cekTambahan && ModalState.cekTambahan()) return true;
+  return potretForm() !== ModalState.snapshot;
+}
+
+/**
+ * Satu-satunya jalan menutup modal dari gestur "keluar" (klik latar, Escape,
+ * tombol X, tombol Batal). Menyimpan tetap memakai closeModal() langsung.
+ *
+ * @param {Function} [aksiLanjutan] dijalankan sebagai ganti menutup — dipakai
+ *        saat tombol Batal sebenarnya kembali ke modal sebelumnya.
+ */
+let _aksiKeluarModal = null;
+
+function tryCloseModal(aksiLanjutan) {
+  _aksiKeluarModal = typeof aksiLanjutan === 'function' ? aksiLanjutan : null;
+  if (!modalAdaPerubahan()) { jalankanKeluarModal(); return; }
+  document.getElementById('confirmExitModal').hidden = false;
+}
+
+function jalankanKeluarModal() {
+  const aksi = _aksiKeluarModal;
+  _aksiKeluarModal = null;
+  document.getElementById('confirmExitModal').hidden = true;
+  ModalState.dijaga = false;
+  ModalState.cekTambahan = null;
+  ModalState.snapshot = '';
+
+  if (aksi) aksi();                 // pindah ke modal lain, jangan ditutup
+  else closeModal();
+}
+
+function batalKeluarModal() {
+  _aksiKeluarModal = null;
+  document.getElementById('confirmExitModal').hidden = true;
+}
+
+function keluarTanpaSimpan() {
+  jalankanKeluarModal();
+}
 
 // ── Loading ─────────────────────────────────────────────
 

@@ -320,6 +320,44 @@ semua orang terkunci di luar panel.
 
 Semua admin memakai PIN yang sama (`AppConfig` → `adminPin`).
 
+# Kelola Hero / Banner
+
+Menu **Kelola Hero** di panel admin mengatur foto besar di halaman depan.
+
+Foto disimpan di Google Drive (folder `Hero-Banner`) dan dicatat di sheet `HeroSlides` —
+**tidak ada satu pun foto hero yang ditulis di dalam kode**, jadi tampilan halaman depan bisa
+diganti kapan saja tanpa menyentuh source code atau push ulang ke GitHub.
+
+Yang bisa dilakukan admin: unggah foto (boleh lebih dari satu slide), memberi judul & subjudul
+opsional, mengatur urutan lewat tombol ↑ ↓, menonaktifkan slide tanpa menghapusnya, dan menghapus
+slide. Foto otomatis dikompres di browser sebelum dikirim, jadi unggahan dari HP tetap ringan.
+
+Di halaman depan, slide berpindah otomatis **ke kanan** setiap 5 detik, dilengkapi tombol
+sebelumnya/berikutnya, indikator titik, dan geser jari di layar sentuh. Perpindahan otomatis
+berhenti sementara saat kursor berada di atas hero, supaya tidak berganti ketika sedang dibaca.
+
+**Kalau belum ada slide aktif**, halaman depan otomatis memakai tampilan teks bawaan — situs tidak
+pernah tampil kosong.
+
+# Format Harga & Input Angka
+
+Semua kolom harga kini menampilkan titik ribuan saat diketik (`65000` → `65.000`), sementara yang
+tersimpan di Google Sheets tetap angka murni `65000`. Perhitungan subtotal, ongkir, total, harga PO,
+dan angka di dashboard semuanya memakai nilai numerik itu, bukan teks berformat.
+
+Tombol panah atas/bawah (spinner) sudah dihilangkan dari seluruh kolom angka. Kolomnya memakai
+papan ketik angka di HP dan hanya menerima digit.
+
+# Form Tidak Hilang Saat Klik di Luar
+
+Form Tambah/Edit (produk, varian, pre-order, hero, email admin) tidak lagi tertutup begitu saja
+saat area di luarnya diklik atau tombol Escape ditekan. Kalau ada isian yang belum disimpan, muncul
+konfirmasi **"Perubahan belum disimpan. Yakin ingin keluar?"** dengan dua pilihan: *Kembali
+Mengedit* (isian tetap utuh) atau *Keluar Tanpa Menyimpan*.
+
+Kalau form belum diisi apa pun, menutupnya tetap langsung — konfirmasi hanya muncul saat memang ada
+yang bisa hilang.
+
 # Masalah umum lainnya
 
 | Yang terlihat | Sebab | Solusi |

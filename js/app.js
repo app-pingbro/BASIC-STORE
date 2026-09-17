@@ -25,6 +25,7 @@ const RUTE = {
   'admin/produk':    { page: 'page-admin-produk',    shell: 'admin' },
   'admin/po':        { page: 'page-admin-po',        shell: 'admin' },
   'admin/pesanan':   { page: 'page-admin-pesanan',   shell: 'admin' },
+  'admin/hero':      { page: 'page-admin-hero',      shell: 'admin' },
   'admin/pengaturan':{ page: 'page-admin-pengaturan',shell: 'admin' }
 };
 
@@ -33,6 +34,7 @@ const JUDUL_ADMIN = {
   'admin/produk': 'Kelola Produk',
   'admin/po': 'Kelola Pre-Order',
   'admin/pesanan': 'Kelola Pesanan',
+  'admin/hero': 'Kelola Hero',
   'admin/pengaturan': 'Pengaturan Admin'
 };
 
@@ -100,6 +102,7 @@ function router() {
     case 'admin/produk':     loadAdminProduk(); break;
     case 'admin/po':         loadAdminPO(); break;
     case 'admin/pesanan':    loadAdminPesanan(); break;
+    case 'admin/hero':       loadAdminHero(); break;
     case 'admin/pengaturan': loadAdminPengaturan(); break;
   }
 }
@@ -122,6 +125,7 @@ function hydrateDariCache() {
   if (!cache) return;
   AppState.katalog = cache.katalog;
   AppState.config = cache.config || AppState.config;
+  AppState.hero = cache.hero || [];
   AppState.katalogSegar = false; // tetap perlu disegarkan di latar belakang
 }
 
@@ -132,11 +136,15 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('adminLoginForm').addEventListener('submit', handleAdminLogin);
 
   // Tutup modal saat klik latar gelap atau tekan Esc
+  // Klik latar & Escape TIDAK lagi langsung menutup — keduanya lewat penjaga
+  // yang meminta konfirmasi kalau ada isian yang belum disimpan.
   document.getElementById('genericModal').addEventListener('click', e => {
-    if (e.target.id === 'genericModal') closeModal();
+    if (e.target.id === 'genericModal') tryCloseModal();
   });
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && !document.getElementById('genericModal').hidden) closeModal();
+    if (e.key !== 'Escape') return;
+    if (!document.getElementById('confirmExitModal').hidden) { batalKeluarModal(); return; }
+    if (!document.getElementById('genericModal').hidden) tryCloseModal();
   });
 
   // Peringatan bila GAS_URL belum diisi (kesalahan paling umum saat deploy)

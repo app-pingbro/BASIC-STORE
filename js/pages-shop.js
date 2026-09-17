@@ -55,12 +55,13 @@ async function loadKatalog(paksa) {
 
   const katalogBaru = res.data.katalog || [];
   const configBaru = res.data.config || AppState.config;
+  AppState.hero = res.data.hero || [];
   const berubah = JSON.stringify(katalogBaru) !== JSON.stringify(AppState.katalog);
 
   AppState.katalog = katalogBaru;
   AppState.config = configBaru;
   AppState.katalogSegar = true;
-  KatalogCache.write(katalogBaru, configBaru);
+  KatalogCache.write(katalogBaru, configBaru, AppState.hero);
 
   // Hanya gambar ulang kalau memang ada perubahan — mencegah layar "berkedip"
   // saat isi katalognya ternyata sama persis dengan yang sudah tampil.
@@ -68,10 +69,127 @@ async function loadKatalog(paksa) {
 }
 
 function tampilkanKatalog() {
+  renderHero();
   renderFilterBar();
   renderKatalogGrid();
   document.getElementById('statTotalProduk').textContent = AppState.katalog.length;
   document.getElementById('statPO').textContent = AppState.katalog.filter(p => p.po).length;
+}
+
+// ════════════════════════════════════════════════════════
+// HERO SLIDER
+// ════════════════════════════════════════════════════════
+//
+// Slide datang dari backend (sheet HeroSlides). Tidak ada foto yang ditulis
+// di dalam kode ini — kalau admin belum mengunggah apa pun, hero teks bawaan
+// yang dipakai supaya halaman depan tidak pernah kosong.
+
+const HeroState = { idx: 0, timer: null, sentuhX: null };
+const HERO_JEDA = 5000;
+
+function renderHero() {
+  const c = document.getElementById('heroContainer');
+  if (!c) return;
+
+  const slides = AppState.hero || [];
+  hentikanHeroOtomatis();
+
+  if (!slides.length) { c.innerHTML = heroBawaan(); return; }
+
+  HeroState.idx = 0;
+  c.innerHTML = `
+    <div class="hero-slider" id="heroSlider">
+      <div class="hero-track" id="heroTrack" style="width:${slides.length * 100}%">
+        ${slides.map(s => `
+          <div class="hero-slide" style="width:${100 / slides.length}%">
+            <img src="${escapeHtml(s.gambar)}" alt="${escapeHtml(s.judul || 'Banner BASIC')}"
+                 loading="eager" decoding="async">
+            ${(s.judul || s.subjudul) ? `
+              <div class="hero-slide-teks">
+                ${s.judul ? `<h1>${escapeHtml(s.judul)}</h1>` : ''}
+                ${s.subjudul ? `<p>${escapeHtml(s.subjudul)}</p>` : ''}
+                <button class="btn btn-primary mt-2" onclick="scrollToGrid()">Belanja Sekarang</button>
+              </div>` : ''}
+          </div>`).join('')}
+      </div>
+
+      ${slides.length > 1 ? `
+        <button class="hero-nav prev" onclick="heroGeser(-1)" aria-label="Slide sebelumnya">‹</button>
+        <button class="hero-nav next" onclick="heroGeser(1)" aria-label="Slide berikutnya">›</button>
+        <div class="hero-dots" id="heroDots">
+          ${slides.map((_, i) => `<button class="hero-dot ${i === 0 ? 'active' : ''}"
+             onclick="heroKe(${i})" aria-label="Slide ${i + 1}"></button>`).join('')}
+        </div>` : ''}
+    </div>`;
+
+  if (slides.length > 1) {
+    mulaiHeroOtomatis();
+    pasangGeserSentuh(document.getElementById('heroSlider'));
+  }
+}
+
+/** Tampilan bawaan saat belum ada slide — halaman depan tidak pernah kosong. */
+function heroBawaan() {
+  return `
+    <div class="hero reg-mark">
+      <div class="hero-eyebrow"><span class="dot"></span><span class="label">Drop Aktif // Komunitas Sablon Bali</span></div>
+      <h1>HEAVY<br>PLASTISOL<span>//</span><br>300GSM ARCHIVE</h1>
+      <p class="desc">Merchandise resmi komunitas sablon Bali. Cetakan plastisol tebal,
+        katun combed premium, edisi terbatas — reguler &amp; pre-order.</p>
+      <div class="hero-actions">
+        <button class="btn btn-primary" onclick="scrollToGrid()">Belanja Sekarang</button>
+        <a href="#/status" class="btn btn-secondary">Cek Status Pesanan</a>
+      </div>
+    </div>`;
+}
+
+function heroKe(i) {
+  const slides = AppState.hero || [];
+  if (!slides.length) return;
+  HeroState.idx = (i + slides.length) % slides.length;
+
+  const track = document.getElementById('heroTrack');
+  if (track) track.style.transform = `translateX(-${HeroState.idx * (100 / slides.length)}%)`;
+
+  document.querySelectorAll('.hero-dot')
+    .forEach((d, n) => d.classList.toggle('active', n === HeroState.idx));
+
+  mulaiHeroOtomatis(); // setiap interaksi menyetel ulang hitungan mundur
+}
+
+/** Geser slide. Otomatis selalu maju ke kanan (arah +1). */
+function heroGeser(arah) { heroKe(HeroState.idx + arah); }
+
+function mulaiHeroOtomatis() {
+  hentikanHeroOtomatis();
+  const slides = AppState.hero || [];
+  if (slides.length < 2) return;
+  HeroState.timer = setInterval(() => heroGeser(1), HERO_JEDA);
+}
+
+function hentikanHeroOtomatis() {
+  if (HeroState.timer) { clearInterval(HeroState.timer); HeroState.timer = null; }
+}
+
+/** Geser dengan jari di layar sentuh. */
+function pasangGeserSentuh(el) {
+  if (!el) return;
+  el.addEventListener('touchstart', e => {
+    HeroState.sentuhX = e.touches[0].clientX;
+    hentikanHeroOtomatis();
+  }, { passive: true });
+
+  el.addEventListener('touchend', e => {
+    if (HeroState.sentuhX === null) return;
+    const selisih = e.changedTouches[0].clientX - HeroState.sentuhX;
+    HeroState.sentuhX = null;
+    if (Math.abs(selisih) > 40) heroGeser(selisih < 0 ? 1 : -1);
+    else mulaiHeroOtomatis();
+  }, { passive: true });
+
+  // Berhenti saat kursor menyapu hero supaya tidak berpindah ketika dibaca
+  el.addEventListener('mouseenter', hentikanHeroOtomatis);
+  el.addEventListener('mouseleave', mulaiHeroOtomatis);
 }
 
 /** Penanda halus bahwa data sedang disegarkan di latar belakang. */
@@ -265,7 +383,7 @@ function drawPDP(p) {
           <label class="label" for="qtyInput">Jumlah</label>
           <div class="qty-control">
             <button type="button" onclick="changeQty(-1)" aria-label="Kurangi">−</button>
-            <input type="number" id="qtyInput" value="1" min="1" onchange="setQty(this.value)">
+            <input type="text" id="qtyInput" inputmode="numeric" autocomplete="off" value="1" onchange="setQty(this.value)">
             <button type="button" onclick="changeQty(1)" aria-label="Tambah">+</button>
           </div>
         </div>

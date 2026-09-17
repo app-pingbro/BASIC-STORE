@@ -82,19 +82,16 @@
 
       <!-- ── KATALOG ── -->
       <section id="page-katalog" class="page">
-        <div class="hero reg-mark">
-          <div class="hero-eyebrow"><span class="dot"></span><span class="label">Drop Aktif // Komunitas Sablon Bali</span></div>
-          <h1>HEAVY<br>PLASTISOL<span>//</span><br>300GSM ARCHIVE</h1>
-          <p class="desc">Merchandise resmi komunitas sablon Bali. Cetakan plastisol tebal, katun combed premium, edisi terbatas — reguler &amp; pre-order.</p>
-          <div class="hero-actions">
-            <button class="btn btn-primary" onclick="scrollToGrid()">Belanja Sekarang</button>
-            <a href="#/status" class="btn btn-secondary">Cek Status Pesanan</a>
-          </div>
-          <div class="hero-stats">
-            <div class="hero-stat"><div class="v" id="statTotalProduk">–</div><div class="l">Produk Live</div></div>
-            <div class="hero-stat"><div class="v" id="statPO">–</div><div class="l">Pre-Order Buka</div></div>
-            <div class="hero-stat"><div class="v">300</div><div class="l">GSM Substrate</div></div>
-          </div>
+        <!-- Hero diisi oleh renderHero() di js/pages-shop.js.
+             Foto slide TIDAK di-hardcode di sini — semuanya datang dari backend
+             (sheet HeroSlides) supaya admin bisa menggantinya tanpa ubah kode.
+             Kalau belum ada slide, tampilan teks bawaan yang dipakai. -->
+        <div id="heroContainer"></div>
+
+        <div class="hero-stats">
+          <div class="hero-stat"><div class="v" id="statTotalProduk">–</div><div class="l">Produk Live</div></div>
+          <div class="hero-stat"><div class="v" id="statPO">–</div><div class="l">Pre-Order Buka</div></div>
+          <div class="hero-stat"><div class="v">300</div><div class="l">GSM Substrate</div></div>
         </div>
 
         <div class="filter-bar" id="filterBar"></div>
@@ -220,6 +217,7 @@
           <li><a href="#/admin/produk" data-page="admin/produk"><svg viewBox="0 0 24 24"><path d="M20 7L12 3 4 7m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>Kelola Produk</a></li>
           <li><a href="#/admin/po" data-page="admin/po"><svg viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Kelola Pre-Order</a></li>
           <li><a href="#/admin/pesanan" data-page="admin/pesanan"><svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 7h6m-6 4h6"/></svg>Kelola Pesanan</a></li>
+          <li><a href="#/admin/hero" data-page="admin/hero"><svg viewBox="0 0 24 24"><path d="M3 5h18v14H3z"/><path d="M3 15l5-5 4 4 3-3 6 6"/><circle cx="8.5" cy="9" r="1.5"/></svg>Kelola Hero</a></li>
           <li><a href="#/admin/pengaturan" data-page="admin/pengaturan"><svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 100-6 3 3 0 000 6z"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09a1.65 1.65 0 00-1.08-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09a1.65 1.65 0 001.51-1.08 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Pengaturan Admin</a></li>
         </ul>
         <div class="admin-sidebar-footer">
@@ -232,6 +230,7 @@
         <section id="page-admin-produk" class="page"><div id="adminProdukContainer"></div></section>
         <section id="page-admin-po" class="page"><div id="adminPOContainer"></div></section>
         <section id="page-admin-pesanan" class="page"><div id="adminPesananContainer"></div></section>
+        <section id="page-admin-hero" class="page"><div id="adminHeroContainer"></div></section>
         <section id="page-admin-pengaturan" class="page"><div id="adminPengaturanContainer"></div></section>
       </main>
     </div>
@@ -242,10 +241,27 @@
     <div class="modal-box">
       <div class="modal-head">
         <h3 id="genericModalTitle">Modal</h3>
-        <button class="modal-close" onclick="closeModal()" aria-label="Tutup">&times;</button>
+        <button class="modal-close" onclick="tryCloseModal()" aria-label="Tutup">&times;</button>
       </div>
       <div class="modal-body" id="genericModalBody"></div>
       <div class="modal-foot" id="genericModalFoot"></div>
+    </div>
+  </div>
+
+  <!-- ══ KONFIRMASI KELUAR FORM ══ -->
+  <!-- Lapisan terpisah di atas modal utama, supaya isian form TIDAK dibongkar
+       saat konfirmasi muncul — pengguna bisa kembali mengedit tanpa kehilangan apa pun. -->
+  <div class="modal-overlay modal-overlay-atas" id="confirmExitModal" hidden>
+    <div class="modal-box modal-box-kecil">
+      <div class="modal-head"><h3>Perubahan Belum Disimpan</h3></div>
+      <div class="modal-body">
+        <p>Perubahan belum disimpan. Yakin ingin keluar?</p>
+        <p class="text-muted small mt-1">Data yang sudah Anda isi akan hilang.</p>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-secondary" onclick="batalKeluarModal()">Kembali Mengedit</button>
+        <button class="btn btn-danger" onclick="keluarTanpaSimpan()">Keluar Tanpa Menyimpan</button>
+      </div>
     </div>
   </div>
 
@@ -260,6 +276,7 @@
   <script src="js/store.js"></script>
   <script src="js/pages-shop.js"></script>
   <script src="js/pages-admin.js"></script>
+  <script src="js/pages-hero.js"></script>
   <script src="js/pages-diagnostik.js"></script>
   <script src="js/app.js"></script>
 </body>
